@@ -1,0 +1,120 @@
+version: "2"
+run:
+  tests: true
+linters:
+  default: none
+  enable:
+    - bodyclose
+    - errcheck
+    - errorlint
+    - govet
+    - ineffassign
+    - misspell
+    - nolintlint
+    - revive
+    - staticcheck
+    - tagalign
+    - unconvert
+    - unparam
+    - unused
+    - whitespace
+  settings:
+    errcheck:
+      exclude-functions:
+        - (io.Closer).Close
+        - (io.ReadCloser).Close
+        - (*os.File).Close
+        - (*github.com/fsnotify/fsnotify.Watcher).Close
+        - fmt.Fprintln(os.Stderr)
+        - fmt.Fprint(os.Stderr)
+        - fmt.Fprintf(os.Stderr)
+        - fmt.Fprintln(os.Stdout)
+        - fmt.Fprint(os.Stdout)
+        - fmt.Fprintf(os.Stdout)
+    govet:
+      enable:
+        - shadow
+        - nilness
+      disable:
+        # The "inline" analyzer flags reflect.Ptr (deprecated alias for
+        # reflect.Pointer). The codebase predates reflect.Pointer and the
+        # rename is intentionally deferred — disable.
+        - inline
+    revive:
+      rules:
+        - name: var-naming
+        - name: superfluous-else
+        - name: unreachable-code
+        - name: redefines-builtin-id
+    staticcheck:
+      # `all` enables every check group (SA, ST, QF). Opt out of the
+      # style nag (ST1000 — every file wants a package comment) and the
+      # "quick-fix" suggestions group (QF1xxx — speculative refactors,
+      # not bug detection). Keep SA (bugs) and the remaining ST checks.
+      checks:
+        - all
+        - -ST1000
+        - -QF1011
+    tagalign:
+      align: true
+      sort: true
+    whitespace:
+      multi-if: true
+      multi-func: true
+  exclusions:
+    generated: lax
+    rules:
+      # Both revive (var-naming) and staticcheck (ST1003) complain about
+      # underscores in package names. Go technically permits them, and
+      # generated packages from kebab-case repo names (`ligo-microservices`
+      # → `ligo_microservices`) hit this — consumers almost always import
+      # with an alias anyway.
+      - linters:
+          - revive
+        text: don't use an underscore in package name
+      - linters:
+          - staticcheck
+        text: ST1003
+        source: ^package
+      - linters:
+          - errcheck
+          - govet
+          - revive
+          - staticcheck
+          - unused
+        path: internal/schematic/
+      - linters:
+          - errcheck
+          - fieldalignment
+          - unparam
+        path: _test\.go$
+    paths:
+      - internal/schematic
+      - ^docs/
+      - third_party$
+      - builtin$
+      - examples$
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
+formatters:
+  enable:
+    - gci
+    - gofumpt
+  settings:
+    gci:
+      sections:
+        - standard
+        - default
+        - prefix(github.com/linkeunid/ligo-microservices)
+      custom-order: true
+    gofumpt:
+      extra-rules: true
+  exclusions:
+    generated: lax
+    paths:
+      - internal/schematic
+      - ^docs/
+      - third_party$
+      - builtin$
+      - examples$
