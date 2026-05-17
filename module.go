@@ -55,6 +55,38 @@ func Module(opts ...Option) ligo.Module {
 	)
 }
 
+// ModuleWith returns a Ligo module that publishes a pre-built [*Service]
+// into the DI container, skipping the loader pipeline. Pair with [Load]
+// or [MustLoad] when you need to read config BEFORE [ligo.New] (e.g. for
+// [ligo.WithAddr]) and want to reuse the same loaded values inside the
+// app:
+//
+//	cfg := ligo_config.MustLoad(
+//	    ligo_config.WithEnvFiles(".env.local", ".env"),
+//	    ligo_config.WithExpand(true),
+//	)
+//	addr := ":" + cfg.GetOr("PORT", "8080")
+//
+//	app := ligo.New(ligo.WithAddr(addr))
+//	app.Register(
+//	    ligo_config.ModuleWith(cfg),
+//	    myFeatureModule(),
+//	)
+//
+// This avoids the double-load and option-drift you'd get from calling
+// [Load] and [Module] with parallel option lists. Use [Module] when no
+// boot-time read is needed.
+func ModuleWith(svc *Service) ligo.Module {
+	if svc == nil {
+		svc = newService()
+	}
+	return ligo.NewModule(ModuleName,
+		ligo.Providers(
+			ligo.Value(svc),
+		),
+	)
+}
+
 // Provider returns just the [*Service] provider without the surrounding
 // module. Use when you want to embed config setup inside an existing
 // module instead of registering a dedicated one.

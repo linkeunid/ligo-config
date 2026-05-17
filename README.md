@@ -8,8 +8,8 @@ go-playground/validator support.
 
 [![Go Version](https://img.shields.io/badge/go-1.25+-blue)](https://go.dev/dl)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-31%20passing-brightgreen)](https://github.com/linkeunid/ligo-config)
-[![Coverage](https://img.shields.io/badge/coverage-82.0%25-brightgreen)](https://github.com/linkeunid/ligo-config)
+[![Tests](https://img.shields.io/badge/tests-33%20passing-brightgreen)](https://github.com/linkeunid/ligo-config)
+[![Coverage](https://img.shields.io/badge/coverage-82.2%25-brightgreen)](https://github.com/linkeunid/ligo-config)
 
 ## Install
 
@@ -61,24 +61,33 @@ func NewMyService(cfg *ligo_config.Service) *MyService {
 }
 ```
 
-### Eager loading (`Load` / `MustLoad`)
+### Eager loading (`Load` / `MustLoad` + `ModuleWith`)
 
 When you need configuration values BEFORE `ligo.New` — e.g. to resolve
 the bind address for `ligo.WithAddr`, which wires at construction time,
-earlier than `Module`'s `OnInit` hook — use `Load`:
+earlier than `Module`'s `OnInit` hook — load eagerly and reuse the
+loaded `*Service` via `ModuleWith`:
 
 ```go
-svc, err := ligo_config.Load(ligo_config.WithEnvFiles(".env"))
-if err != nil {
-    panic(err)
-}
-addr := ":" + svc.GetOr("PORT", "8080")
+cfg := ligo_config.MustLoad(
+    ligo_config.WithEnvFiles(".env.local", ".env"),
+    ligo_config.WithExpand(true),
+)
+addr := ":" + cfg.GetOr("PORT", "8080")
 
-app := ligo.New(ligo.WithAddr(addr), /* … */)
-app.Register(ligo_config.Module(ligo_config.WithEnvFiles(".env")), /* … */)
+app := ligo.New(ligo.WithAddr(addr) /* … */)
+app.Register(
+    ligo_config.ModuleWith(cfg),  // publish the same Service into DI
+    myFeatureModule(),
+)
 ```
 
-`MustLoad` is the panicking variant for the same scenario.
+`ModuleWith(svc)` publishes the already-loaded service into the DI
+container without re-running the loader pipeline — avoids the
+double-load and option-drift you'd get from calling `Load` and `Module`
+with parallel option lists.
+
+Use plain `Module` when no boot-time read is needed (the typical case).
 
 ## Source precedence
 
