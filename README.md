@@ -8,8 +8,8 @@ go-playground/validator support.
 
 [![Go Version](https://img.shields.io/badge/go-1.25+-blue)](https://go.dev/dl)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-28%20passing-brightgreen)](https://github.com/linkeunid/ligo-config)
-[![Coverage](https://img.shields.io/badge/coverage-79.2%25-brightgreen)](https://github.com/linkeunid/ligo-config)
+[![Tests](https://img.shields.io/badge/tests-31%20passing-brightgreen)](https://github.com/linkeunid/ligo-config)
+[![Coverage](https://img.shields.io/badge/coverage-82.0%25-brightgreen)](https://github.com/linkeunid/ligo-config)
 
 ## Install
 
@@ -60,6 +60,25 @@ func NewMyService(cfg *ligo_config.Service) *MyService {
     }
 }
 ```
+
+### Eager loading (`Load` / `MustLoad`)
+
+When you need configuration values BEFORE `ligo.New` — e.g. to resolve
+the bind address for `ligo.WithAddr`, which wires at construction time,
+earlier than `Module`'s `OnInit` hook — use `Load`:
+
+```go
+svc, err := ligo_config.Load(ligo_config.WithEnvFiles(".env"))
+if err != nil {
+    panic(err)
+}
+addr := ":" + svc.GetOr("PORT", "8080")
+
+app := ligo.New(ligo.WithAddr(addr), /* … */)
+app.Register(ligo_config.Module(ligo_config.WithEnvFiles(".env")), /* … */)
+```
+
+`MustLoad` is the panicking variant for the same scenario.
 
 ## Source precedence
 

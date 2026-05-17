@@ -71,6 +71,51 @@ func Provider() ligo.Provider {
 	})
 }
 
+// Load synchronously builds a [*Service] outside the Ligo DI lifecycle.
+// Use in main() when you need configuration values BEFORE [ligo.New] —
+// for example, to resolve the bind address passed to [ligo.WithAddr],
+// which wires at construction time, earlier than Module's OnInit hook.
+//
+//	svc, err := ligo_config.Load(ligo_config.WithEnvFiles(".env"))
+//	if err != nil {
+//	    panic(err)
+//	}
+//	addr := ":" + svc.GetOr("PORT", "8080")
+//	app := ligo.New(ligo.WithAddr(addr), ...)
+//
+// The returned *Service is independent from the one Module produces; they
+// read the same sources but do not share state. If you only need config
+// at runtime (inside handlers, use cases, providers), prefer injecting
+// *Service via [Module] instead.
+func Load(opts ...Option) (*Service, error) {
+	resolved := defaultOptions()
+	for _, opt := range opts {
+		opt(&resolved)
+	}
+	merged, err := loadSources(context.Background(), resolved)
+	if err != nil {
+		return nil, err
+	}
+	svc := newService()
+	svc.setAll(merged)
+	if resolved.validate != nil {
+		if err := resolved.validate(svc); err != nil {
+			return nil, err
+		}
+	}
+	return svc, nil
+}
+
+// MustLoad is the panicking variant of [Load]. Use in main() where a
+// missing or malformed config should crash the process before [ligo.New].
+func MustLoad(opts ...Option) *Service {
+	svc, err := Load(opts...)
+	if err != nil {
+		panic(err)
+	}
+	return svc
+}
+
 // configBootstrap is a register-only provider whose OnInit hook drives
 // the loader pipeline. It exists so config loading happens inside Ligo's
 // lifecycle (and errors abort startup) instead of in a factory body.
